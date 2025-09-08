@@ -1,0 +1,9 @@
+# Dependency
+node_modules/
+
+# Env
+.env
+
+# WhatsApp session/cache
+.wwebjs_auth/
+.wwebjs_cache/
