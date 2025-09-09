@@ -671,10 +671,9 @@ class ScheduleBot {
             // FIXED: Handle ambiguous cases with "jadwal" keyword
             if (/\bjadwal\b/.test(message)) {
                 // Specific patterns for stats that mention time
-                if (/berapa.*(?:hari ini|besok|minggu|bulan)/i.test(message)) {
+                if (/berapa.*(?:jadwal)?.*(hari ini|besok|minggu|bulan)/i.test(message)) {
                     return this.getScheduleStats(input);
                 }
-                
                 // View patterns with time keywords
                 if (/(?:lihat|tampilkan|show|kapan|ada).*(?:hari ini|besok|minggu)/i.test(message)) {
                     return this.viewSchedules(input);

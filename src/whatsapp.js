@@ -1,37 +1,62 @@
-// src/whatsapp.js
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
-const { handleMessage } = require("./index"); // ambil handler dari index.js
+const chalk = require("chalk");
+const ScheduleBot = require("./bot");
 
-// Setup WhatsApp client
+// Inisialisasi bot jadwal
+const bot = new ScheduleBot();
+
+// Inisialisasi WhatsApp client
 const client = new Client({
-    authStrategy: new LocalAuth(),  // simpan sesi di lokal
+    authStrategy: new LocalAuth(),
     puppeteer: {
-        headless: true,             // true = tanpa tampilan browser
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        headless: true, // ubah jadi false kalau mau lihat browsernya
+        args: ["--no-sandbox", "--disable-setuid-sandbox"]
     }
 });
 
-// Event QR
-client.on("qr", qr => {
-    console.log("📱 Scan QR Code ini di WhatsApp (Linked Devices):");
+// Event: QR Code untuk login
+client.on("qr", (qr) => {
+    console.clear();
+    console.log(chalk.yellow("📱 Scan QR Code berikut untuk login WhatsApp:"));
     qrcode.generate(qr, { small: true });
 });
 
-// Event ready
+// Event: Bot siap dipakai
 client.on("ready", () => {
-    console.log("✅ WhatsApp Client is ready!");
+    console.log(chalk.green("✅ WhatsApp Bot berhasil terhubung!"));
 });
 
-// Event pesan masuk
-client.on("message", async msg => {
-    console.log(`📩 Dari ${msg.from}: ${msg.body}`);
+// Event: Pesan masuk dari WhatsApp
+client.on("message", async (msg) => {
+    const chat = msg.body.trim();
+    console.log(chalk.blue(`📩 Pesan dari ${msg.from}: ${chat}`));
 
-    const reply = handleMessage(msg.body);
-    if (reply) {
-        await msg.reply(reply);
+    try {
+        // Proses pesan menggunakan ScheduleBot
+        const reply = bot.processMessage(chat);
+
+        // Balas pesan kalau ada respon dari bot
+        if (reply) {
+            await msg.reply(reply);
+            console.log(chalk.green(`🤖 Bot → ${msg.from}: ${reply}`));
+        }
+    } catch (error) {
+        console.error(chalk.red("❌ Terjadi kesalahan:", error));
+        await msg.reply("⚠️ Ups, ada kesalahan. Coba lagi nanti ya!");
     }
 });
 
-// Mulai client
+// Event: Jika autentikasi gagal
+client.on("auth_failure", (msg) => {
+    console.error(chalk.red("❌ Autentikasi gagal:", msg));
+});
+
+// Event: Jika koneksi terputus
+client.on("disconnected", () => {
+    console.log(chalk.red("❌ WhatsApp terputus. Menyambungkan ulang..."));
+    client.initialize();
+});
+
+// Jalankan WhatsApp bot
 client.initialize();
