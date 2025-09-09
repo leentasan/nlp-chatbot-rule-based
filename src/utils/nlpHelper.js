@@ -154,24 +154,24 @@ class NLPHelpers {
     }
 
     // FIXED: extractActivity with better pattern removal
-    static extractActivity(input, removePatterns = []) {
+        static extractActivity(input, removePatterns = []) {
         let activity = input;
-        
+
         const defaultPatterns = [
-            /^(?:tambah|buat|jadwalkan|schedule)\s+(?:jadwal\s+)?/i, // Remove command words
-            /\b(?:jam|pukul)\s*\d{1,2}(?:[\.:]?\d{2})?\s*(?:pagi|siang|sore|malam)?\b/i, // Remove time
-            /\b(pagi|siang|sore|malam)\b/i,                          // Remove period
-            /\b(hari ini|besok|lusa)\b/i,                           // Remove relative dates
-            /\btanggal\s*\d+\b/i,                                   // Remove "tanggal 10"
-            /\b\d{1,2}[\s\/\-]\d{1,2}(?:[\s\/\-]\d{2,4})?\b/i      // Remove date patterns
+            /^(?:tambah|buat|jadwalkan|schedule)\s+(?:jadwal\s+)?/i,  // command
+            /\b(?:jadwal|ini|itu)\b/gi,                              // <== tambah stopword
+            /\b(?:jam|pukul)\s*\d{1,2}(?:[\.:]?\d{2})?\s*(?:pagi|siang|sore|malam)?\b/gi,
+            /\b(pagi|siang|sore|malam)\b/gi,
+            /\b(hari ini|besok|lusa)\b/gi,
+            /\btanggal\s*\d+\b/gi,
+            /\b\d{1,2}[\s\/\-]\d{1,2}(?:[\s\/\-]\d{2,4})?\b/gi
         ];
-        
+
         const allPatterns = [...defaultPatterns, ...removePatterns];
         allPatterns.forEach(pattern => {
             activity = activity.replace(pattern, '');
         });
-        
-        // Clean up extra spaces and return
+
         return activity.replace(/\s+/g, ' ').trim();
     }
 

@@ -126,8 +126,8 @@ class ScheduleBot {
         } else if (lower.includes('semua')) {
             filteredSchedules = schedules.slice();
         } else {
-            // Default to today
-            filteredSchedules = schedules.filter(s => s.date === todayStr);
+            // Default: semua
+            filteredSchedules = schedules.slice();
         }
 
         if (filteredSchedules.length === 0) {
@@ -156,12 +156,12 @@ class ScheduleBot {
                 return dateA - dateB;
             })
             .forEach(date => {
-                result += `JADWAL ${NLPHelpers.formatDisplayDate(date)}\n`;
+                result += `${NLPHelpers.formatDisplayDate(date)}\n`;
                 grouped[date]
                     .sort((x, y) => x.time.localeCompare(y.time))
                     .forEach(s => {
                         const timeDot = s.time.replace(':', '.');
-                        result += `- ${s.activity.toUpperCase()} ${timeDot}\n`;
+                        result += `- ${timeDot} ${s.activity.toUpperCase()}\n`;
                     });
                 result += '\n';
             });
@@ -586,18 +586,18 @@ class ScheduleBot {
         '🤖 SCHEDBOT - Bantuan Perintah:',
         '',
         '📝 MENGELOLA JADWAL:',
-        '  • Tambah:  "Jadwalkan nonton malam ini jam 7"  (atau "Tambah makan roti jam 9")',
-        '  • Lihat:   "Lihat jadwal", "Lihat jadwal hari ini", "Lihat jadwal besok", "Lihat jadwal semua"',
-        '  • Edit:    "Ubah makan 08:00 jadi 10:00", "Ganti rapat ke besok"',
-        '  • Hapus:   "Hapus makan 08:00", "Hapus semua jadwal makan", "Batalkan semua jadwal"',
+        '  • Tambah : "Jadwalkan nonton malam ini jam 7"  (atau "Tambah makan roti jam 9")',
+        '  • Lihat  : "Lihat jadwal", "Lihat jadwal hari ini", "Lihat jadwal besok", "Lihat jadwal semua"',
+        '  • Edit   : "Ubah makan 08:00 jadi 10:00", "Ganti rapat ke besok"',
+        '  • Hapus  : "Hapus makan 08:00", "Hapus semua jadwal makan", "Batalkan semua jadwal"',
         '',
         '🔍 PENCARIAN & REMINDER:',
-        '  • Cari:     "Cari meeting", "Kapan ada rapat?"',
-        '  • Reminder: "Reminder 1 jam", "Ingatkan 30 menit ke depan", "Reminder satu hari kedepan"',
+        '  • Cari       : "Cari meeting", "Kapan ada rapat?"',
+        '  • Reminder   : "Reminder 1 jam", "Ingatkan 30 menit ke depan", "Reminder satu hari kedepan"',
         '',
         '📊 ANALISIS & EXPORT:',
-        '  • Statistik: "Berapa jadwal", "Statistik jadwal"',
-        '  • Export:    "Export csv", "Backup jadwal"  (CSV & Backup didukung)',
+        '  • Statistik  : "Berapa jadwal", "Statistik jadwal"',
+        '  • Export     : "Export csv", "Backup jadwal"  (CSV & Backup didukung)',
         '',
         '❓ Bantuan singkat: ketik "help", "bantuan", atau "perintah"',
         '',
