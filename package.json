@@ -1,16 +1,58 @@
 {
   "name": "nlp-chatbot-rule-based",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Rule-based schedule chatbot with WhatsApp integration",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "whatsapp": "node src/whatsapp.js",
+    "schedbot": "node src/bot.js"
   },
-  "keywords": [],
+  "keywords": [
+    "chatbot",
+    "nlp",
+    "schedule",
+    "whatsapp",
+    "rule-based",
+    "indonesian",
+    "automation"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.34.0"
+    "whatsapp-web.js": "^1.34.0",
+    "jspdf": "^2.5.1",
+    "csv-writer": "^1.6.0",
+    "fuse.js": "^7.0.0",
+    "chalk": "^4.1.2",
+    "node-cron": "^3.0.3",
+    "fs-extra": "^11.1.1",
+    "moment": "^2.29.4",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/node": "^20.5.0",
+    "nodemon": "^3.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverage": true,
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/coverage/"
+    ]
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
