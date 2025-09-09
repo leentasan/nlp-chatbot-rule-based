@@ -1,4 +1,4 @@
-// src/bot.js
+// src/bot.js - FIXED VERSION
 const fs = require('fs');
 const path = require('path');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
@@ -7,21 +7,18 @@ const chalk = require('chalk');
 const cron = require('node-cron');
 
 // Import utility classes
-// NOTE: DateParser removed (unused after refactor)
-const NLPHelpers = require('./utils/nlpHelpers');
+const NLPHelpers = require('./utils/nlpHelper');
 
 class ScheduleBot {
     constructor() {
         this.dataFile = path.join(__dirname, '../data/data.json');
         this.backupDir = path.join(__dirname, '../backups');
         this.exportDir = path.join(__dirname, '../exports');
-        // Ensure directories exist BEFORE touching files
         this.initializeDirectories();
         this.initializeData();
         this.startReminderSystem();
     }
 
-    // Initialize directories
     initializeDirectories() {
         const dirs = [
             path.join(__dirname, '../data'),
@@ -36,7 +33,6 @@ class ScheduleBot {
         });
     }
 
-    // Initialize JSON data file
     initializeData() {
         if (!fs.existsSync(this.dataFile)) {
             const initialData = { 
@@ -50,7 +46,6 @@ class ScheduleBot {
         }
     }
 
-    // Load data from JSON
     loadData() {
         try {
             const data = fs.readFileSync(this.dataFile, 'utf8');
@@ -61,7 +56,6 @@ class ScheduleBot {
         }
     }
 
-    // Save data to JSON
     saveData(data) {
         try {
             fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
@@ -72,29 +66,21 @@ class ScheduleBot {
         }
     }
 
-    // RULE 1: Tambah Jadwal - dengan NLP helpers
+    // FIXED: RULE 1 - Tambah Jadwal
     addSchedule(input) {
         const addRegex = /^(?:tambah|buat|jadwalkan|schedule)\s+(.+?)$/i;
         const match = input.match(addRegex);
         
-        if (!match) return null; // tidak match pattern add
+        if (!match) return null;
 
         const fullText = match[1].trim();
-
-        // Prevent false-positives: jika user menulis "jadwal hari ini" with verbs like lihat/cari, skip
-        const lower = input.toLowerCase();
-        if (/^(?:lihat|tampilkan|show|cari|kapan|berapa|hapus|batalkan)/i.test(lower)) {
-            return null;
-        }
-        
-        // Extract aktivitas, tanggal, dan waktu menggunakan helpers
         const activity = NLPHelpers.extractActivity(fullText);
-        const dateStr = NLPHelpers.extractDatePattern(input) || 'hari ini';
         
+        // FIXED: Extract date and time properly
+        const dateStr = NLPHelpers.extractDatePattern(input) || 'hari ini';
         const date = NLPHelpers.parseDate(dateStr);
         const time = NLPHelpers.parseTime(input);
         
-        // Validasi input dengan helpers
         const validation = NLPHelpers.validateScheduleInput(activity, date, time);
         if (!validation.isValid) {
             return `❌ ${validation.errors.join(', ')}`;
@@ -118,8 +104,7 @@ class ScheduleBot {
         }
     }
 
-
-    // RULE 2: Lihat Jadwal - dengan NLP helpers
+    // FIXED: RULE 2 - View Schedules with proper format
     viewSchedules(input) {
         const data = this.loadData();
         const schedules = data.schedules || [];
@@ -128,52 +113,53 @@ class ScheduleBot {
             return '📅 Belum ada jadwal yang tersimpan.';
         }
 
-        // Determine filter
         const todayStr = NLPHelpers.parseDate('hari ini');
         const tomorrowStr = NLPHelpers.parseDate('besok');
 
         let filteredSchedules;
         const lower = (input || '').toLowerCase();
-        if (lower.includes('hari ini')) filteredSchedules = schedules.filter(s => s.date === todayStr);
-        else if (lower.includes('besok')) filteredSchedules = schedules.filter(s => s.date === tomorrowStr);
-        else if (lower.includes('semua')) filteredSchedules = schedules.slice();
-        else filteredSchedules = schedules.filter(s => s.date === todayStr);
+        
+        if (lower.includes('hari ini')) {
+            filteredSchedules = schedules.filter(s => s.date === todayStr);
+        } else if (lower.includes('besok')) {
+            filteredSchedules = schedules.filter(s => s.date === tomorrowStr);
+        } else if (lower.includes('semua')) {
+            filteredSchedules = schedules.slice();
+        } else {
+            // Default to today
+            filteredSchedules = schedules.filter(s => s.date === todayStr);
+        }
 
         if (filteredSchedules.length === 0) {
             return '📅 Tidak ada jadwal untuk periode yang diminta.';
         }
 
-        // Sort by date ISO and time
+        // FIXED: Sort by date and time properly
         filteredSchedules.sort((a, b) => {
-            const isoA = DateParser ? DateParser.toISODate(a.date) : a.date.split('-').reverse().join('-');
-            const isoB = DateParser ? DateParser.toISODate(b.date) : b.date.split('-').reverse().join('-');
-            const dateA = new Date(`${isoA}T${a.time}`);
-            const dateB = new Date(`${isoB}T${b.time}`);
+            const dateA = new Date(a.date.split('-').reverse().join('-') + 'T' + a.time);
+            const dateB = new Date(b.date.split('-').reverse().join('-') + 'T' + b.time);
             return dateA - dateB;
         });
 
-        // Group by date
+        // FIXED: Group by date and format correctly
         const grouped = {};
         filteredSchedules.forEach(s => {
-            grouped[s.date] = grouped[s.date] || [];
+            if (!grouped[s.date]) grouped[s.date] = [];
             grouped[s.date].push(s);
         });
 
-        // Build result
         let result = '';
         Object.keys(grouped)
-            .sort((a,b) => {
-                // sort by ISO
-                const ia = DateParser ? DateParser.toISODate(a) : a.split('-').reverse().join('-');
-                const ib = DateParser ? DateParser.toISODate(b) : b.split('-').reverse().join('-');
-                return new Date(ia) - new Date(ib);
+            .sort((a, b) => {
+                const dateA = new Date(a.split('-').reverse().join('-'));
+                const dateB = new Date(b.split('-').reverse().join('-'));
+                return dateA - dateB;
             })
             .forEach(date => {
                 result += `JADWAL ${NLPHelpers.formatDisplayDate(date)}\n`;
                 grouped[date]
-                    .sort((x,y) => x.time.localeCompare(y.time))
+                    .sort((x, y) => x.time.localeCompare(y.time))
                     .forEach(s => {
-                        // tampilkan waktu dengan titik (08.00) sesuai preferensi
                         const timeDot = s.time.replace(':', '.');
                         result += `- ${s.activity.toUpperCase()} ${timeDot}\n`;
                     });
@@ -183,8 +169,7 @@ class ScheduleBot {
         return result.trim();
     }
 
-
-    // RULE 3: Edit Jadwal - dengan NLP helpers
+    // FIXED: RULE 3 - Edit Schedule with better matching
     editSchedule(input) {
         const data = this.loadData();
         const schedules = data.schedules;
@@ -197,11 +182,14 @@ class ScheduleBot {
         const searchKey = match[1].trim();
         const newValue = match[2] ? match[2].trim() : null;
 
-        // Pencarian yang lebih pintar
+        // FIXED: Better schedule matching including time with dots
         const foundSchedules = schedules.filter(s => {
             const activityMatch = s.activity.toLowerCase().includes(searchKey.toLowerCase());
-            const timeMatch = searchKey.includes(s.time) || s.time.includes(searchKey.replace('.', ':'));
-            const combinedMatch = `${s.activity} ${s.time}`.toLowerCase().includes(searchKey.toLowerCase());
+            const timeMatch = searchKey.includes(s.time) || 
+                             s.time.includes(searchKey.replace('.', ':')) ||
+                             searchKey.includes(s.time.replace(':', '.'));
+            const combinedMatch = `${s.activity} ${s.time}`.toLowerCase().includes(searchKey.toLowerCase()) ||
+                                `${s.activity} ${s.time.replace(':', '.')}`.toLowerCase().includes(searchKey.toLowerCase());
             return activityMatch || timeMatch || combinedMatch;
         });
 
@@ -224,7 +212,7 @@ class ScheduleBot {
             return `ℹ️ Jadwal ditemukan: "${schedule.activity}" pada ${NLPHelpers.formatDisplayDate(schedule.date)} ${schedule.time}.\nUntuk mengedit, gunakan format: "Ubah [jadwal lama] jadi [jadwal baru]"`;
         }
 
-        // Deteksi jenis edit menggunakan helpers
+        // FIXED: Better detection of edit type
         if (newValue.match(/\d{1,2}[\.:]?\d{2}|jam\s+\d{1,2}|pukul\s+\d{1,2}/i)) {
             schedule.time = NLPHelpers.parseTime(newValue);
         } else if (newValue.match(/hari ini|besok|lusa|tanggal\s*\d+|\d{1,2}[\s\/\-]\d{1,2}/i)) {
@@ -240,7 +228,7 @@ class ScheduleBot {
         }
     }
 
-    // RULE 4: Hapus Jadwal - dengan NLP helpers
+    // FIXED: RULE 4 - Delete Schedule
     deleteSchedule(input) {
         const data = this.loadData();
         const schedules = data.schedules || [];
@@ -249,7 +237,7 @@ class ScheduleBot {
             return '📅 Belum ada jadwal yang bisa dihapus.';
         }
 
-        // Hapus semua jadwal - regex yang ketat
+        // FIXED: Delete all schedules
         if (input.match(/^(?:hapus|batalkan)\s+semua\s*(?:jadwal)?$/i) || 
             input.match(/^(?:bersihkan|clear)\s*(?:jadwal)?$/i)) {
             data.schedules = [];
@@ -259,7 +247,7 @@ class ScheduleBot {
             return '❌ Gagal menghapus jadwal.';
         }
 
-        // Hapus semua jadwal dengan keyword
+        // FIXED: Delete all schedules with keyword
         const deleteAllRegex = /^(?:hapus|batalkan)\s+semua\s+(?:jadwal\s+)?(.+?)$/i;
         const allMatch = input.match(deleteAllRegex);
         if (allMatch) {
@@ -282,15 +270,15 @@ class ScheduleBot {
 
         const deleteRegex = /^(?:hapus|batalkan|delete)\s+(.+?)$/i;
         const match = input.match(deleteRegex);
-        if (!match) return null; // pattern delete tidak cocok
+        if (!match) return null;
 
         const searchKey = match[1].trim().toLowerCase();
 
-        // create indexed list then filter
         const indexed = schedules.map((s, idx) => ({ schedule: s, index: idx }));
         const found = indexed.filter(item =>
             item.schedule.activity.toLowerCase().includes(searchKey) ||
-            (`${item.schedule.activity} ${item.schedule.time}`).toLowerCase().includes(searchKey)
+            (`${item.schedule.activity} ${item.schedule.time}`).toLowerCase().includes(searchKey) ||
+            (`${item.schedule.activity} ${item.schedule.time.replace(':', '.')}`).toLowerCase().includes(searchKey)
         );
 
         if (found.length === 0) {
@@ -307,7 +295,6 @@ class ScheduleBot {
         }
 
         const deletedSchedule = found[0].schedule;
-        // remove by index
         schedules.splice(found[0].index, 1);
         data.schedules = schedules;
 
@@ -318,8 +305,7 @@ class ScheduleBot {
         }
     }
 
-
-    // RULE 5: Cari Jadwal - dengan NLP helpers
+    // FIXED: RULE 5 - Search Schedules
     searchSchedules(input) {
         const data = this.loadData();
         const schedules = data.schedules;
@@ -333,10 +319,12 @@ class ScheduleBot {
 
         if (!match) return null;
 
-        const searchTerm = (match[1] || match[2]).trim();
+        let searchTerm = (match[1] || match[2]).trim();
+        
+        // FIXED: Remove "ada" from search term
+        searchTerm = searchTerm.replace(/^ada\s+/, '');
 
-        // Jangan search kata 'ada' 
-        if (searchTerm === 'ada' || searchTerm.length < 2) {
+        if (searchTerm.length < 2) {
             return `❌ Kata kunci "${searchTerm}" terlalu pendek. Gunakan kata kunci yang lebih spesifik.`;
         }
 
@@ -364,8 +352,7 @@ class ScheduleBot {
         return response;
     }
 
-
-    // RULE 6: Reminder - dengan NLP helpers (fixed duplicate & stray text)
+    // FIXED: RULE 6 - Reminder with proper number word parsing
     getReminderSchedules(input) {
         const data = this.loadData();
         const schedules = data.schedules;
@@ -373,7 +360,7 @@ class ScheduleBot {
 
         let reminderMinutes = 60; // default
         
-        // Parse angka bahasa Indonesia dan numerik menggunakan helpers
+        // FIXED: Parse Indonesian number words properly
         const processedInput = NLPHelpers.parseNumberWords(input);
         const reminderMatch = processedInput.match(/(\d+)\s*(menit|jam|hari)/i);
         
@@ -421,7 +408,6 @@ class ScheduleBot {
         return response;
     }
 
-    // RULE 7: Statistik - dengan NLP helpers
     getScheduleStats(input) {
         const data = this.loadData();
         const schedules = data.schedules;
@@ -470,7 +456,7 @@ class ScheduleBot {
         return response;
     }
 
-    // RULE 8: Export
+    // FIXED: Export without jsPDF dependency
     exportSchedules(input) {
         const data = this.loadData();
         const schedules = data.schedules;
@@ -548,8 +534,6 @@ class ScheduleBot {
                 created: new Date(schedule.created).toLocaleString('id-ID')
             }));
 
-            // csv-writer is async; we trigger it and immediately respond.
-            // In CLI usage this is fine; for stricter guarantees, convert callers to async & await.
             csvWriter.writeRecords(records).catch(err => {
                 console.error('CSV write error:', err);
             });
@@ -601,19 +585,19 @@ class ScheduleBot {
 
 📝 MENGELOLA JADWAL:
    • Tambah: "Jadwalkan nonton malam ini jam 7"
-   • Lihat: "Lihat jadwal" "Lihat jadwal hari ini", "Lihat jadwal besok"
+   • Lihat: "Lihat jadwal", "Lihat jadwal hari ini", "Lihat jadwal besok"
    • Edit: "Ubah makan 08:00 jadi 10:00", "Ganti rapat ke besok"
    • Hapus: "Hapus makan 08:00", "Hapus semua jadwal makan"
 
 🔍 PENCARIAN & REMINDER:
    • Cari: "Cari meeting", "Kapan ada rapat"
-   • Reminder: "Reminder 1 jam", "Reminder satu hari ke depan"
+   • Reminder: "Reminder 1 jam", "Reminder satu hari kedepan"
 
 📊 ANALISIS & EXPORT:
-   • Statistik: "Berapa jadwal"
+   • Statistik: "Berapa jadwal", "Statistik jadwal"
    • Export: "Export csv", "Backup jadwal"
 
-❓ BANTUAN:** "help", "bantuan", "perintah"
+❓ BANTUAN: "help", "bantuan", "perintah"
 
 💡 Tips:
    - Gunakan kata kunci spesifik untuk edit/hapus (misal: "ubah makan 08:00 jadi 10:00")
@@ -621,90 +605,83 @@ class ScheduleBot {
    - Format tampilan: JADWAL [TANGGAL] dengan daftar aktivitas dan waktu`;
     }
 
-    // MAIN PROCESSING - dengan prioritas yang benar dan tanpa false positive
+    // FIXED: MAIN PROCESSING with proper priority and pattern matching
     processMessage(input) {
         const message = input.trim().toLowerCase();
         
         try {
-            // RULE 0: Help - paling prioritas
+            // RULE 0: Help - highest priority
             if (message.match(/^(?:help|bantuan|apa\s+yang\s+bisa|perintah)$/i)) {
                 return this.showHelp();
             }
 
-            // RULE 1: Statistik - harus sebelum rules lain karena bisa mengandung kata jadwal
-            if (message.match(/^(?:statistik|stats|berapa\s+jadwal)(?:\s+.*)?$/i)) {
+            // FIXED: RULE 1 - Statistics - very specific patterns to avoid false positives
+            if (message.match(/^(?:statistik|stats)(?:\s+jadwal)?$/i) || 
+                message.match(/^berapa\s+jadwal$/i)) {
                 return this.getScheduleStats(input);
             }
 
-            // RULE 2: Export/Backup - harus sebelum add
+            // RULE 2: Export/Backup
             if (message.match(/^(?:export|backup|ekspor)\s*/i)) {
                 return this.exportSchedules(input);
             }
 
-            // RULE 3: Reminder - harus sebelum add, regex yang spesifik
+            // RULE 3: Reminder - specific pattern
             if (message.match(/^(?:reminder|ingatkan)\s+.*(?:menit|jam|hari)/i)) {
                 return this.getReminderSchedules(input);
             }
 
-            // RULE 4: Lihat Jadwal - sangat spesifik
+            // FIXED: RULE 4 - View Schedules - very specific patterns
             if (message.match(/^(?:lihat|tampilkan|show)\s+jadwal/i) ||
                 message.match(/^jadwal\s+(?:hari ini|besok|semua)$/i) ||
                 message === 'lihat jadwal' || message === 'jadwal') {
                 return this.viewSchedules(input);
             }
 
-            // RULE 5: Hapus Jadwal - harus sebelum add
+            // FIXED: RULE 5 - Delete Schedules - must come before add
             if (message.match(/^(?:hapus|batalkan|delete)\s+/i)) {
                 const result = this.deleteSchedule(input);
-                if (result !== null && result !== undefined) return result;
-                // jika null -> berarti pattern tidak cocok, jangan lanjut ke add
-                return `🤖 Perintah hapus tidak dikenali. Gunakan: \"hapus [kata kunci]\" atau \"hapus semua\".`;
+                if (result !== null) return result;
+                return `🤖 Perintah hapus tidak dikenali. Gunakan: "hapus [kata kunci]" atau "hapus semua".`;
             }
 
-            // RULE 6: Edit Jadwal - harus sebelum add
+            // RULE 6: Edit Schedule
             if (message.match(/^(?:ubah|ganti|edit)\s+/i)) {
                 const result = this.editSchedule(input);
-                if (result !== null && result !== undefined) return result;
-                return `🤖 Perintah edit tidak dikenali. Format: \"Ubah [jadwal lama] jadi [jadwal baru]\".`;
+                if (result !== null) return result;
+                return `🤖 Perintah edit tidak dikenali. Format: "Ubah [jadwal lama] jadi [jadwal baru]".`;
             }
 
-            // RULE 7: Cari Jadwal - harus sebelum add
-            if (message.match(/^(?:cari|find)\s+/i) || message.match(/^kapan\s+(?:ada\s+)?/i)) {
+            // FIXED: RULE 7 - Search Schedules - must come before add
+            if (message.match(/^(?:cari|find)\s+/i) || 
+                message.match(/^kapan\s+(?:ada\s+)?(?!jadwal\s*$)/i)) {
                 const result = this.searchSchedules(input);
-                if (result !== null && result !== undefined) return result;
+                if (result !== null) return result;
                 return `🔍 Tidak ditemukan hasil untuk pencarian.`;
             }
 
-            // RULE 8: Tambah Jadwal - paling akhir dan sangat spesifik
-            // HANYA kalau kata kerja tambah eksplisit ada di awal
+            // FIXED: RULE 8 - Add Schedule - most restrictive, only explicit add commands
             if (message.match(/^(?:tambah|buat|jadwalkan|schedule)\s+/i)) {
-            // cegah false positive kalau user maksudnya lihat/cari/hapus, bukan tambah
-                if (message.match(/^(?:lihat|tampilkan|show|cari|kapan|berapa|hapus|batalkan)\s+/i)) {
-                    return null;
-                }
-
                 const result = this.addSchedule(input);
-                if (result !== null && result !== undefined) return result;
+                if (result !== null) return result;
                 return '❌ Format tambah jadwal tidak dikenali. Contoh: "Jadwalkan nonton malam ini jam 7"';
             }
 
-
-            // Jika kalimat mengandung kata 'jadwal' tapi tidak eksplisit (mis. "berapa jadwal hari ini"), 
-            // tangani secara spesifik agar tidak dianggap "add"
-            if (/jadwal/.test(message)) {
-                // Prioritaskan lihat / statistik / cari
-                if (/berapa|berapa banyak|jumlah/i.test(message) || /hari ini|besok|semua/.test(message)) {
+            // FIXED: Handle ambiguous cases with "jadwal" keyword
+            if (/\bjadwal\b/.test(message)) {
+                // Specific patterns for stats that mention time
+                if (/berapa.*(?:hari ini|besok|minggu|bulan)/i.test(message)) {
                     return this.getScheduleStats(input);
                 }
-                if (/lihat|tampilkan|show|kapan|ada|cari|find/.test(message)) {
+                
+                // View patterns with time keywords
+                if (/(?:lihat|tampilkan|show|kapan|ada).*(?:hari ini|besok|minggu)/i.test(message)) {
                     return this.viewSchedules(input);
                 }
 
-                // Kalau masih ambiguous, tanya klarifikasi
                 return '🤖 Maksud Anda melihat jadwal atau menambahkan jadwal? Contoh: "Lihat jadwal hari ini" atau "Jadwalkan makan jam 7".';
             }
 
-            // Fallback - tidak dikenal
             return `🤖 Maaf, saya tidak mengerti "${input}". Ketik "bantuan" untuk melihat perintah yang tersedia.`;
             
         } catch (error) {
@@ -712,7 +689,6 @@ class ScheduleBot {
             return '❌ Terjadi kesalahan saat memproses pesan. Coba lagi nanti.';
         }
     }
-
 
     // API untuk integrasi
     processMessageAPI(input, userId = null) {

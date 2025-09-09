@@ -1,4 +1,4 @@
-// src/utils/nlpHelpers.js
+// src/utils/nlpHelpers.js - FIXED VERSION
 const DateParser = require('./dateParser');
 
 class NLPHelpers {
@@ -49,62 +49,71 @@ class NLPHelpers {
         return 1 - matrix[len2][len1] / Math.max(len1, len2);
     }
 
-    static detectIntent(input) {
-        const message = input.trim().toLowerCase();
-        
-        const intents = [
-            { name: 'help', regex: /^(?:help|bantuan|apa\s+yang\s+bisa|perintah)$/i },
-            { name: 'stats', regex: /^(?:statistik|stats|berapa\s+jadwal)(?:\s+.*)?$/i },
-            { name: 'export', regex: /^(?:export|backup|ekspor)\s*/i },
-            { name: 'reminder', regex: /^(?:reminder|ingatkan)\s+.*(?:menit|jam|hari)/i },
-            { 
-                name: 'view', 
-                regex: /^(?:lihat|tampilkan|show)\s+jadwal|^jadwal\s+(?:hari ini|besok|semua)$/i,
-                exact: ['lihat jadwal', 'jadwal']
-            },
-            { name: 'delete', regex: /^(?:hapus|batalkan|delete)\s+/i },
-            { name: 'edit', regex: /^(?:ubah|ganti|edit)\s+/i },
-            { name: 'search', regex: /^(?:cari|find)\s+|^kapan\s+(?:ada\s+)?/i },
-            { name: 'add', regex: /^(?:tambah|buat|jadwalkan|schedule)\s+/i }
-        ];
-
-        for (const intent of intents) {
-            if (intent.exact && intent.exact.includes(message)) {
-                return intent.name;
-            }
-        }
-
-        for (const intent of intents) {
-            if (message.match(intent.regex)) {
-                return intent.name;
-            }
-        }
-
-        return 'unknown';
-    }
-
+    // FIXED: parseNumberWords with better mapping
     static parseNumberWords(text) {
         const numberWords = {
             'satu': '1', 'dua': '2', 'tiga': '3', 'empat': '4', 'lima': '5',
             'enam': '6', 'tujuh': '7', 'delapan': '8', 'sembilan': '9', 'sepuluh': '10',
-            'sebelas': '11', 'dua belas': '12', 'lima belas': '15', 'dua puluh': '20',
-            'tiga puluh': '30', 'empat puluh': '40', 'lima puluh': '50', 'enam puluh': '60'
+            'sebelas': '11', 'dua belas': '12', 'tiga belas': '13', 'empat belas': '14', 'lima belas': '15',
+            'enam belas': '16', 'tujuh belas': '17', 'delapan belas': '18', 'sembilan belas': '19',
+            'dua puluh': '20', 'tiga puluh': '30', 'empat puluh': '40', 'lima puluh': '50', 'enam puluh': '60'
         };
 
         let result = text.toLowerCase();
-        for (const [word, number] of Object.entries(numberWords)) {
-            result = result.replace(new RegExp(`\\b${word}\\b`, 'gi'), number);
+        
+        // Sort by length (longest first) to avoid partial replacements
+        const sortedWords = Object.keys(numberWords).sort((a, b) => b.length - a.length);
+        
+        for (const word of sortedWords) {
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            result = result.replace(regex, numberWords[word]);
         }
+        
         return result;
     }
 
-    // 🔗 Integrasi penuh ke DateParser
+    // Delegate to DateParser
     static parseDate(dateStr) {
         return DateParser.parseDate(dateStr);
     }
 
+    // FIXED: parseTime with better period handling
     static parseTime(text) {
-        return DateParser.parseTime(text);
+        if (!text || typeof text !== 'string') return '00:00';
+        const s = text.toLowerCase();
+
+        // Find time pattern
+        const hhmm = s.match(/(\d{1,2})(?:[\.:](\d{1,2}))?/);
+        if (!hhmm) return '00:00';
+
+        let hour = parseInt(hhmm[1], 10);
+        let minute = hhmm[2] ? Math.min(parseInt(hhmm[2], 10), 59) : 0;
+
+        // Handle 24+ hours
+        if (hour > 24) hour = hour % 24;
+
+        // FIXED: Better period detection anywhere in text
+        const periodMatch = s.match(/\b(pagi|siang|sore|malam)\b/);
+        const period = periodMatch ? periodMatch[1] : null;
+
+        if (period === 'pagi') {
+            if (hour === 12) hour = 0; // 12 pagi = 00:00
+            // Other morning hours stay the same (7 pagi = 07:00)
+        } else if (period === 'siang') {
+            if (hour >= 1 && hour <= 6) hour += 12; // 1-6 siang → 13-18
+            else if (hour === 12) hour = 12;       // 12 siang = 12:00
+        } else if (period === 'sore') {
+            if (hour >= 1 && hour <= 6) hour += 12; // 1-6 sore → 13-18
+        } else if (period === 'malam') {
+            if (hour === 12) hour = 0;             // 12 malam = 00:00
+            else if (hour >= 1 && hour <= 11) hour += 12; // 1-11 malam → 13-23
+        }
+
+        // Normalize
+        hour = ((hour % 24) + 24) % 24;
+        minute = Math.max(0, Math.min(59, minute));
+
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     }
 
     static formatDisplayDate(dateStr) {
@@ -144,15 +153,17 @@ class NLPHelpers {
                   .toLowerCase();
     }
 
+    // FIXED: extractActivity with better pattern removal
     static extractActivity(input, removePatterns = []) {
         let activity = input;
+        
         const defaultPatterns = [
-            /^(?:tambah|buat|jadwalkan|schedule)\s+(?:jadwal\s+)?/i, // buang kata perintah di depan
-            /\b(?:jam|pukul)\s*\d{1,2}(?:[\.:]?\d{2})?\b/i,           // buang jam/hh:mm
-            /\b(pagi|siang|sore|malam)\b/i,                          // buang periode waktu
-            /\b(hari ini|besok|lusa)\b/i,                            // buang relative dates
-            /\btanggal\s*\d+\b/i,                                    // buang "tanggal 10"
-            /\b\d{1,2}[\s\/\-]\d{1,2}\b/i                            // buang "10/9" atau "10-9"
+            /^(?:tambah|buat|jadwalkan|schedule)\s+(?:jadwal\s+)?/i, // Remove command words
+            /\b(?:jam|pukul)\s*\d{1,2}(?:[\.:]?\d{2})?\s*(?:pagi|siang|sore|malam)?\b/i, // Remove time
+            /\b(pagi|siang|sore|malam)\b/i,                          // Remove period
+            /\b(hari ini|besok|lusa)\b/i,                           // Remove relative dates
+            /\btanggal\s*\d+\b/i,                                   // Remove "tanggal 10"
+            /\b\d{1,2}[\s\/\-]\d{1,2}(?:[\s\/\-]\d{2,4})?\b/i      // Remove date patterns
         ];
         
         const allPatterns = [...defaultPatterns, ...removePatterns];
@@ -160,24 +171,24 @@ class NLPHelpers {
             activity = activity.replace(pattern, '');
         });
         
+        // Clean up extra spaces and return
         return activity.replace(/\s+/g, ' ').trim();
-}
-
+    }
 
     static extractDatePattern(input) {
         const datePatterns = [
-            /hari ini/i,
-            /besok/i,
-            /lusa/i,
-            /tanggal\s*\d+/i,
-            /\d{1,2}[\s\/\-]\d{1,2}/i,
-            /\d{1,2}\s+(?:januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)/i
+            /\b(hari ini)\b/i,
+            /\b(besok)\b/i,
+            /\b(lusa)\b/i,
+            /\b(tanggal\s*\d+)\b/i,
+            /\b(\d{1,2}[\s\/\-]\d{1,2}(?:[\s\/\-]\d{2,4})?)\b/i,
+            /\b(\d{1,2}\s+(?:januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember))\b/i
         ];
         
         for (const pattern of datePatterns) {
             const match = input.match(pattern);
             if (match) {
-                return match[0];
+                return match[1];
             }
         }
         
@@ -192,9 +203,18 @@ class NLPHelpers {
 
     static validateScheduleInput(activity, date, time) {
         const errors = [];
-        if (!activity || activity.length < 2) errors.push('Aktivitas terlalu pendek');
-        if (!this.isValidDate(date)) errors.push('Format tanggal tidak valid');
-        if (!this.isValidTime(time)) errors.push('Format waktu tidak valid');
+        
+        if (!activity || activity.length < 2) {
+            errors.push('Aktivitas terlalu pendek atau kosong');
+        }
+        
+        if (!this.isValidDate(date)) {
+            errors.push('Format tanggal tidak valid');
+        }
+        
+        if (!this.isValidTime(time)) {
+            errors.push('Format waktu tidak valid');
+        }
         
         return {
             isValid: errors.length === 0,
@@ -252,6 +272,49 @@ class NLPHelpers {
         if (similarity > 0.7) score += fuzzyMatch * similarity;
         
         return score;
+    }
+
+    // FIXED: Intent detection with better patterns
+    static detectIntent(input) {
+        const message = input.trim().toLowerCase();
+        
+        const intents = [
+            { name: 'help', regex: /^(?:help|bantuan|apa\s+yang\s+bisa|perintah)$/i },
+            { 
+                name: 'stats', 
+                regex: /^(?:statistik|stats)(?:\s+jadwal)?$|^berapa\s+jadwal$/i 
+            },
+            { name: 'export', regex: /^(?:export|backup|ekspor)\s*/i },
+            { name: 'reminder', regex: /^(?:reminder|ingatkan)\s+.*(?:menit|jam|hari)/i },
+            { 
+                name: 'view', 
+                regex: /^(?:lihat|tampilkan|show)\s+jadwal|^jadwal\s+(?:hari ini|besok|semua)$/i,
+                exact: ['lihat jadwal', 'jadwal']
+            },
+            { name: 'delete', regex: /^(?:hapus|batalkan|delete)\s+/i },
+            { name: 'edit', regex: /^(?:ubah|ganti|edit)\s+/i },
+            { 
+                name: 'search', 
+                regex: /^(?:cari|find)\s+|^kapan\s+(?:ada\s+)?(?!jadwal\s*$)/i 
+            },
+            { name: 'add', regex: /^(?:tambah|buat|jadwalkan|schedule)\s+/i }
+        ];
+
+        // Check exact matches first
+        for (const intent of intents) {
+            if (intent.exact && intent.exact.includes(message)) {
+                return intent.name;
+            }
+        }
+
+        // Check regex patterns
+        for (const intent of intents) {
+            if (message.match(intent.regex)) {
+                return intent.name;
+            }
+        }
+
+        return 'unknown';
     }
 }
 
