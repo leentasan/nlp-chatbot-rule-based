@@ -580,30 +580,31 @@ class ScheduleBot {
         });
     }
 
+// inside ScheduleBot class
     showHelp() {
-        return `🤖 **SCHEDBOT - Bantuan Lengkap:**
-
-📝 MENGELOLA JADWAL:
-   • Tambah: "Jadwalkan nonton malam ini jam 7"
-   • Lihat: "Lihat jadwal", "Lihat jadwal hari ini", "Lihat jadwal besok"
-   • Edit: "Ubah makan 08:00 jadi 10:00", "Ganti rapat ke besok"
-   • Hapus: "Hapus makan 08:00", "Hapus semua jadwal makan"
-
-🔍 PENCARIAN & REMINDER:
-   • Cari: "Cari meeting", "Kapan ada rapat"
-   • Reminder: "Reminder 1 jam", "Reminder satu hari kedepan"
-
-📊 ANALISIS & EXPORT:
-   • Statistik: "Berapa jadwal", "Statistik jadwal"
-   • Export: "Export csv", "Backup jadwal"
-
-❓ BANTUAN: "help", "bantuan", "perintah"
-
-💡 Tips:
-   - Gunakan kata kunci spesifik untuk edit/hapus (misal: "ubah makan 08:00 jadi 10:00")
-   - Untuk reminder, bisa pakai "1 jam" atau "satu jam"
-   - Format tampilan: JADWAL [TANGGAL] dengan daftar aktivitas dan waktu`;
+    return [
+        '🤖 SCHEDBOT - Bantuan Perintah:',
+        '',
+        '📝 MENGELOLA JADWAL:',
+        '  • Tambah:  "Jadwalkan nonton malam ini jam 7"  (atau "Tambah makan roti jam 9")',
+        '  • Lihat:   "Lihat jadwal", "Lihat jadwal hari ini", "Lihat jadwal besok", "Lihat jadwal semua"',
+        '  • Edit:    "Ubah makan 08:00 jadi 10:00", "Ganti rapat ke besok"',
+        '  • Hapus:   "Hapus makan 08:00", "Hapus semua jadwal makan", "Batalkan semua jadwal"',
+        '',
+        '🔍 PENCARIAN & REMINDER:',
+        '  • Cari:     "Cari meeting", "Kapan ada rapat?"',
+        '  • Reminder: "Reminder 1 jam", "Ingatkan 30 menit ke depan", "Reminder satu hari kedepan"',
+        '',
+        '📊 ANALISIS & EXPORT:',
+        '  • Statistik: "Berapa jadwal", "Statistik jadwal"',
+        '  • Export:    "Export csv", "Backup jadwal"  (CSV & Backup didukung)',
+        '',
+        '❓ Bantuan singkat: ketik "help", "bantuan", atau "perintah"',
+        '',
+        '💡 Tips: Gunakan kata kerja eksplisit (jadwalkan/tambah/lihat/ubah/hapus/cari) supaya bot tidak salah paham.'
+    ].join('\n');
     }
+
 
     // FIXED: MAIN PROCESSING with proper priority and pattern matching
     processMessage(input) {
