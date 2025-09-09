@@ -7,3 +7,8 @@ node_modules/
 # WhatsApp session/cache
 .wwebjs_auth/
 .wwebjs_cache/
+
+*.log
+exports/
+backups/
+data/
