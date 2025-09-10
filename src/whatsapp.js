@@ -15,6 +15,7 @@ const client = new Client({
     }
 });
 
+
 // Event: QR Code untuk login
 client.on("qr", (qr) => {
     console.clear();
@@ -47,15 +48,15 @@ client.on("message", async (msg) => {
     }
 });
 
-// Event: Jika autentikasi gagal
-client.on("auth_failure", (msg) => {
-    console.error(chalk.red("❌ Autentikasi gagal:", msg));
+// Contoh perbaikan di whatsapp.js
+client.on('disconnected', (reason) => {
+    console.log('Client was logged out:', reason);
+    process.exit(0);
 });
 
-// Event: Jika koneksi terputus
-client.on("disconnected", () => {
-    console.log(chalk.red("❌ WhatsApp terputus. Menyambungkan ulang..."));
-    client.initialize();
+client.on('auth_failure', () => {
+    console.log('Authentication failed');
+    process.exit(0);
 });
 
 // Jalankan WhatsApp bot
