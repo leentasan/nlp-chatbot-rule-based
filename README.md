@@ -5,14 +5,13 @@ Della Febi Alfian (22/505892/TK/55393) <br>
 Raffa Alzena Zhafirah (22/505656/TK/55353) <br>
 
 ## Setup & run untuk CLI dan integrasi
-git clone https://github.com/leentasan/nlp-chatbot-rule-based.git //Clone repository <br> 
-cd nlp-chatbot-rule-based // Masuk ke direktori project <br> 
-npm install //Install dependencies utama <br>
-npm install whatsapp-web.js qrcode-terminal //Install library tambahan untuk integrasi WhatsApp <br>
-npm start //Jalankan bot via CLI <br>
-node src/whatsapp.js //Jalankan integrasi dengan WhatsApp <br>
-
-node src/whatsapp.js (Integrasi Whatsapp) <br>
+1. git clone https://github.com/leentasan/nlp-chatbot-rule-based.git (Clone repository) <br> 
+2. cd nlp-chatbot-rule-based (Masuk ke direktori project) <br> 
+3. npm install (Install dependencies utama) <br>
+4. npm install whatsapp-web.js qrcode-terminal (Install library tambahan untuk integrasi WhatsApp) <br>
+5. npm start (Jalankan bot via CLI) <br>
+6. node src/whatsapp.js (Jalankan integrasi dengan WhatsApp) <br>
+7. node src/whatsapp.js (Integrasi Whatsapp) <br>
 
 ## QR WhatsApp
 <img src="https://github.com/user-attachments/assets/3d5b5df1-a342-4eba-abba-7e87fe0e3173" width="300"/>
