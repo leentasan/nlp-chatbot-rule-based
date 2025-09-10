@@ -53,8 +53,8 @@ class DateParser {
         if (!text || typeof text !== 'string') return '00:00';
         const s = text.toLowerCase();
 
-        // Cari format jam:menit
-        const hhmm = s.match(/(\d{1,2})(?::(\d{1,2}))?/);
+        // Cari format jam:menit atau jam.menit
+        const hhmm = s.match(/(\d{1,2})(?:[:.](\d{1,2}))?/);
         if (!hhmm) return '00:00';
 
         let hour = parseInt(hhmm[1], 10);
